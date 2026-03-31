@@ -53,5 +53,6 @@ Este projeto segue padrões rigorosos para a equipe:
 
 **Autores e Mantenedores do Ecossistema PIM:**
 - Patrese Emiron Barbosa de Souza
-- Rodrigo Bezerra
-- Lucy Mary
+- Rodrigo Bezerra da Silva
+- Daniel Valdivino Silva
+
