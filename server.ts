@@ -4,7 +4,7 @@ import { usuarioRoutes } from "./src/routes/usuario.routes.js";
 import { equipamentoRoutes } from "./src/routes/equipamento.routes.js";
 import { ordemServicoRoutes } from "./src/routes/ordemServico.routes.js";
 import { authRoutes } from "./src/routes/auth.routes.js";
-import { errorMiddleware } from "./src/middleware/errorMiddleware.js";
+import { errorMiddleware } from "./src/middlewares/errorMiddleware.js";
 
 
 console.log("SERVER ATUAL CARREGADO");
