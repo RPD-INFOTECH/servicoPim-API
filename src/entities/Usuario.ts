@@ -14,6 +14,9 @@ export class Usuario {
   @Column({ type: "varchar", unique: true, nullable: false })
   email!: string;
 
+  @Column({ type: "varchar", unique: true, nullable: false })
+  matricula!: string;
+
   @Column({ type: "varchar", nullable: false, select: false })
   senha_hash!: string;
 

@@ -19,13 +19,15 @@ let equipamentoId: number;
 async function criarUsuario(
     nome: string,
     email: string,
-    perfil: Perfil
+    perfil: Perfil,
+    matricula: string
 ): Promise<string> {
     const repo = appDataSource.getRepository(Usuario);
     const senhaHash = await bcrypt.hash("senha123", 10);
     const user = await repo.save({
         nome,
         email,
+        matricula,
         senha_hash: senhaHash,
         perfil,
         setor: "TI",
@@ -65,17 +67,20 @@ describe("Testes de Integração - Rotas de Ordens de Serviço (Banco Real)", ()
         solicitanteId = await criarUsuario(
             "Solicitante OS",
             "solicitante-os-rt@teste.com",
-            Perfil.SOLICITANTE
+            Perfil.SOLICITANTE,
+            "OS-USER-001"
         );
         const supervisorId = await criarUsuario(
             "Supervisor OS",
             "supervisor-os-rt@teste.com",
-            Perfil.SUPERVISOR
+            Perfil.SUPERVISOR,
+            "OS-USER-002"
         );
         tecnicoId = await criarUsuario(
             "Tecnico OS",
             "tecnico-os-rt@teste.com",
-            Perfil.TECNICO
+            Perfil.TECNICO,
+            "OS-USER-003"
         );
 
         solicitanteToken = await login("solicitante-os-rt@teste.com");
@@ -182,6 +187,29 @@ describe("Testes de Integração - Rotas de Ordens de Serviço (Banco Real)", ()
 
         expect(response.status).toBe(200);
         expect(Array.isArray(response.body)).toBe(true);
+    });
+
+    test("GET /ordens-servico - Deve filtrar por status e prioridade", async () => {
+        await request(app)
+            .post("/ordens-servico")
+            .set("Authorization", `Bearer ${solicitanteToken}`)
+            .send({
+                equipamentoId,
+                tipo_manutencao: "CORRETIVA",
+                prioridade: "CRÍTICA",
+                descricao_falha: "Falha para validar filtro de listagem",
+            });
+
+        const response = await request(app)
+            .get("/ordens-servico")
+            .query({ status: "ABERTA", prioridade: "CRÍTICA" })
+            .set("Authorization", `Bearer ${solicitanteToken}`);
+
+        expect(response.status).toBe(200);
+        expect(Array.isArray(response.body)).toBe(true);
+        expect(response.body.length).toBeGreaterThan(0);
+        expect(response.body.every((os: any) => os.status === "ABERTA")).toBe(true);
+        expect(response.body.every((os: any) => os.prioridade === "CRÍTICA")).toBe(true);
     });
 
     test("GET /ordens-servico/:id - Deve buscar OS por ID", async () => {

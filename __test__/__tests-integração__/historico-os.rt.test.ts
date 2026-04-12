@@ -20,13 +20,15 @@ let osId: string;
 async function criarUsuario(
     nome: string,
     email: string,
-    perfil: Perfil
+    perfil: Perfil,
+    matricula: string
 ): Promise<string> {
     const repo = appDataSource.getRepository(Usuario);
     const senhaHash = await bcrypt.hash("senha123", 10);
     const user = await repo.save({
         nome,
         email,
+        matricula,
         senha_hash: senhaHash,
         perfil,
         setor: "TI",
@@ -65,17 +67,20 @@ describe("Testes de Integração - Rotas de Histórico de OS (Banco Real)", () =
         solicitanteId = await criarUsuario(
             "Solicitante Hist",
             "solicitante-hist-rt@teste.com",
-            Perfil.SOLICITANTE
+            Perfil.SOLICITANTE,
+            "HIST-USER-001"
         );
         await criarUsuario(
             "Supervisor Hist",
             "supervisor-hist-rt@teste.com",
-            Perfil.SUPERVISOR
+            Perfil.SUPERVISOR,
+            "HIST-USER-002"
         );
         tecnicoId = await criarUsuario(
             "Tecnico Hist",
             "tecnico-hist-rt@teste.com",
-            Perfil.TECNICO
+            Perfil.TECNICO,
+            "HIST-USER-003"
         );
 
         solicitanteToken = await login("solicitante-hist-rt@teste.com");

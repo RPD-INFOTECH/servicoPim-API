@@ -44,6 +44,7 @@ describe("UsuarioService", () => {
       id: "user-1",
       nome: "Joao",
       email: "joao@teste.com",
+      matricula: "MAT-001",
       perfil: Perfil.SOLICITANTE,
       setor: "TI",
       ativo: true,
@@ -88,6 +89,7 @@ describe("UsuarioService", () => {
     const result = await usuarioService.createUser({
       nome: "Joao Silva",
       email: "joao@teste.com",
+      matricula: "MAT-001",
       senha: "senha123",
       perfil: Perfil.SOLICITANTE,
       setor: "TI",
@@ -98,6 +100,7 @@ describe("UsuarioService", () => {
       expect.objectContaining({
         nome: "Joao Silva",
         email: "joao@teste.com",
+        matricula: "MAT-001",
         perfil: Perfil.SOLICITANTE,
       })
     );
@@ -113,6 +116,7 @@ describe("UsuarioService", () => {
     const result = await usuarioService.createUser({
       nome: "Sem Defaults Explícitos",
       email: "default@teste.com",
+      matricula: "MAT-DEFAULT",
       senha: "senha123",
       perfil: Perfil.SOLICITANTE,
     });
@@ -122,12 +126,17 @@ describe("UsuarioService", () => {
   });
 
   test("falha ao criar usuario com email duplicado", async () => {
-    userRepo.findOne.mockResolvedValue({ id: "existing-user" });
+    userRepo.findOne.mockResolvedValue({
+      id: "existing-user",
+      email: "duplicado@teste.com",
+      matricula: "MAT-OLD",
+    });
 
     await expect(
       usuarioService.createUser({
         nome: "Duplicado",
         email: "duplicado@teste.com",
+        matricula: "MAT-DUP",
         senha: "senha123",
         perfil: Perfil.SOLICITANTE,
         setor: "TI",
@@ -141,6 +150,7 @@ describe("UsuarioService", () => {
         id: "user-1",
         nome: "Joao",
         email: "joao@teste.com",
+        matricula: "MAT-001",
         perfil: Perfil.SOLICITANTE,
         setor: "TI",
         ativo: true,
@@ -165,6 +175,7 @@ describe("UsuarioService", () => {
         id: "user-1",
         nome: "Joao",
         email: "joao@teste.com",
+        matricula: "MAT-001",
         perfil: Perfil.SOLICITANTE,
         setor: "TI",
         ativo: true,
@@ -180,11 +191,34 @@ describe("UsuarioService", () => {
     expect(result.email).toBe("novo@teste.com");
   });
 
+  test("atualiza matrícula para um valor único", async () => {
+    userRepo.findOne
+      .mockResolvedValueOnce({
+        id: "user-1",
+        nome: "Joao",
+        email: "joao@teste.com",
+        matricula: "MAT-001",
+        perfil: Perfil.SOLICITANTE,
+        setor: "TI",
+        ativo: true,
+        senha_hash: "hash-antigo",
+      })
+      .mockResolvedValueOnce(null);
+    userRepo.save.mockImplementation(async (data) => data);
+
+    const result = await usuarioService.updateUser("user-1", {
+      matricula: "MAT-002",
+    });
+
+    expect(result.matricula).toBe("MAT-002");
+  });
+
   test("desativa usuario em vez de remover fisicamente", async () => {
     userRepo.findOne.mockResolvedValue({
       id: "user-1",
       nome: "Joao",
       email: "joao@teste.com",
+      matricula: "MAT-001",
       perfil: Perfil.SOLICITANTE,
       setor: "TI",
       ativo: true,
@@ -203,6 +237,7 @@ describe("UsuarioService", () => {
         id: "user-1",
         nome: "Joao",
         email: "joao@teste.com",
+        matricula: "MAT-001",
         perfil: Perfil.SOLICITANTE,
         setor: "TI",
         ativo: true,
@@ -216,5 +251,42 @@ describe("UsuarioService", () => {
     await expect(
       usuarioService.updateUser("user-1", { email: "maria@teste.com" })
     ).rejects.toThrow("Email já cadastrado");
+  });
+
+  test("falha ao criar usuario com matrícula duplicada", async () => {
+    userRepo.findOne.mockResolvedValue({ id: "existing-user", matricula: "MAT-001" });
+
+    await expect(
+      usuarioService.createUser({
+        nome: "Duplicado",
+        email: "duplicado-matricula@teste.com",
+        matricula: "MAT-001",
+        senha: "senha123",
+        perfil: Perfil.SOLICITANTE,
+        setor: "TI",
+      })
+    ).rejects.toThrow("Matrícula já cadastrada");
+  });
+
+  test("falha ao atualizar matrícula para outra já existente", async () => {
+    userRepo.findOne
+      .mockResolvedValueOnce({
+        id: "user-1",
+        nome: "Joao",
+        email: "joao@teste.com",
+        matricula: "MAT-001",
+        perfil: Perfil.SOLICITANTE,
+        setor: "TI",
+        ativo: true,
+        senha_hash: "hash-antigo",
+      })
+      .mockResolvedValueOnce({
+        id: "user-2",
+        matricula: "MAT-002",
+      });
+
+    await expect(
+      usuarioService.updateUser("user-1", { matricula: "MAT-002" })
+    ).rejects.toThrow("Matrícula já cadastrada");
   });
 });
