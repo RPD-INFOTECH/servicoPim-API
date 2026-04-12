@@ -6,6 +6,7 @@ import { Usuario } from "../entities/Usuario.js";
 import { StatusOs } from "../types/os_status.js";
 import { Perfil } from "../types/usr_perfil.js";
 import { HistoricoOSService } from "./HistoricoOSService.js";
+import { Prioridade } from "../types/os_prioridade.js";
 
 type CreateOrdemServicoDTO = {
   equipamentoId: number;
@@ -21,6 +22,11 @@ type AtribuirTecnicoDTO = {
 
 type AtualizarStatusDTO = {
   status: StatusOs;
+};
+
+type ListarOrdensServicoFilters = {
+  status: StatusOs | undefined;
+  prioridade: Prioridade | undefined;
 };
 
 type ConcluirOrdemServicoDTO = {
@@ -45,8 +51,14 @@ export class OrdemServicoService {
     this.historicoService = historicoService ?? new HistoricoOSService(appDataSource);
   }
 
-  async getAll(): Promise<OrdemServico[]> {
+  async getAll(
+    filters: ListarOrdensServicoFilters = { status: undefined, prioridade: undefined }
+  ): Promise<OrdemServico[]> {
     return await this.ordemServicoRepo.find({
+      where: {
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.prioridade ? { prioridade: filters.prioridade } : {}),
+      },
       relations: ["equipamento", "solicitante", "tecnico"],
       order: { abertura_em: "DESC" },
     });

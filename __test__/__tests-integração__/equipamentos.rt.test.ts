@@ -18,6 +18,7 @@ async function loginAndGetToken(): Promise<string> {
     await repo.save({
         nome: "Admin Equip",
         email,
+        matricula: "EQP-RT-001",
         senha_hash: senhaHash,
         perfil: Perfil.SUPERVISOR,
         setor: "TI",

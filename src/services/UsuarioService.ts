@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 type UserInput = {
   nome: string;
   email: string;
+  matricula: string;
   senha: string;
   perfil: Usuario["perfil"];
   setor?: string | null;
@@ -39,7 +40,7 @@ export class UsuarioService {
   async getByEmail(email: string): Promise<Usuario> {
     const user = await this.userRepo.findOne({
       where: { email },
-      select: ["id", "nome", "email", "perfil", "setor", "ativo", "created_at"],
+      select: ["id", "nome", "email", "matricula", "perfil", "setor", "ativo", "created_at"],
     });
 
     if (!user) {
@@ -51,16 +52,21 @@ export class UsuarioService {
 
   async createUser(data: UserInput): Promise<Usuario> {
     const usuarioExistente = await this.userRepo.findOne({
-      where: { email: data.email },
+      where: [{ email: data.email }, { matricula: data.matricula }],
     });
 
     if (usuarioExistente) {
-      throw new AppError("Email já cadastrado");
+      if (usuarioExistente.email === data.email) {
+        throw new AppError("Email já cadastrado");
+      }
+
+      throw new AppError("Matrícula já cadastrada");
     }
 
     const novoUsuario = this.userRepo.create({
       nome: data.nome,
       email: data.email,
+      matricula: data.matricula,
       senha_hash: await bcrypt.hash(data.senha, 8),
       perfil: data.perfil,
       setor: data.setor ?? null,
@@ -85,6 +91,16 @@ export class UsuarioService {
       }
     }
 
+    if (data.matricula && data.matricula !== user.matricula) {
+      const matriculaExistente = await this.userRepo.findOne({
+        where: { matricula: data.matricula },
+      });
+
+      if (matriculaExistente) {
+        throw new AppError("Matrícula já cadastrada");
+      }
+    }
+
     if (data.senha) {
       user.senha_hash = await bcrypt.hash(data.senha, 8);
     }
@@ -92,6 +108,7 @@ export class UsuarioService {
     Object.assign(user, {
       nome: data.nome ?? user.nome,
       email: data.email ?? user.email,
+      matricula: data.matricula ?? user.matricula,
       perfil: data.perfil ?? user.perfil,
       setor: data.setor ?? user.setor,
       ativo: data.ativo ?? user.ativo,

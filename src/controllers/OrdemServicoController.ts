@@ -2,6 +2,7 @@ import { AppError } from '../errors/AppError.js';
 import type { Request, Response } from "express";
 import { OrdemServicoService } from "../services/OrdemServicoService.js";
 import { appDataSource } from "../database/appDataSource.js";
+import { listarOrdensServicoQuerySchemaDTO } from "../dtos/OrdemServicoSchemaDTO.js";
 
 const ordemServicoService = new OrdemServicoService(appDataSource);
 
@@ -20,7 +21,11 @@ export class OrdemServicoController {
   }
 
   async getAll(req: Request, res: Response): Promise<Response> {
-    const ordensServico = await ordemServicoService.getAll();
+    const filtros = listarOrdensServicoQuerySchemaDTO.parse(req.query);
+    const ordensServico = await ordemServicoService.getAll({
+      status: filtros.status,
+      prioridade: filtros.prioridade,
+    });
     return res.status(200).json(ordensServico);
   }
 

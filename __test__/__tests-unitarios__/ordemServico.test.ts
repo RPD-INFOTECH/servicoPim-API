@@ -98,6 +98,25 @@ describe("OrdemServicoService", () => {
     expect(result).toEqual([{ id: "os-1" }]);
   });
 
+  test("lista ordens de serviço com filtros de status e prioridade", async () => {
+    ordemRepo.find.mockResolvedValue([{ id: "os-2" }]);
+
+    const result = await ordemServicoService.getAll({
+      status: StatusOs.ABERTA,
+      prioridade: Prioridade.ALTA,
+    });
+
+    expect(result).toEqual([{ id: "os-2" }]);
+    expect(ordemRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: StatusOs.ABERTA,
+          prioridade: Prioridade.ALTA,
+        },
+      })
+    );
+  });
+
   test("falha ao buscar ordem inexistente por id", async () => {
     ordemRepo.findOne.mockResolvedValue(null);
 
