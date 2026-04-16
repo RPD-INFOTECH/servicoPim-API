@@ -11,6 +11,8 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - gestao-os-network
 
   app:
     build: .
@@ -33,6 +35,8 @@ services:
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       DB_LOGGING: ${DB_LOGGING}
+    networks:
+      - gestao-os-network
 
   pgadmin:
     image: dpage/pgadmin4
@@ -47,7 +51,13 @@ services:
       - "8080:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - gestao-os-network
 
 volumes:
   postgres_data:
   pgadmin_data:
+
+networks:
+  gestao-os-network:
+    external: true

@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
@@ -8,11 +9,26 @@ import { usuarioRoutes } from "./routes/usuario.routes.js";
 import { equipamentoRoutes } from "./routes/equipamento.routes.js";
 import { ordemServicoRoutes } from "./routes/ordemServico.routes.js";
 import { historicoRouter } from "./routes/HistoricoOSroutes.js";
+import { dashboardRoutes } from "./routes/dashboard.routes.js";
 import { errorMiddleware } from "./middleware/errorMiddleware.js";
 import { isTestEnv } from "./config/env.js";
 
 export function createApp() {
   const app = express();
+
+  // Habilita CORS para o frontend (container Docker ou ambiente local)
+  app.use(
+    cors({
+      origin: [
+        "http://localhost:4200",   // desenvolvimento local Angular
+        "http://localhost:8083",   // frontend via Docker
+        "http://frontend-app",    // comunicação interna Docker
+      ],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+      credentials: true,
+    })
+  );
 
   if (!isTestEnv()) {
     app.use(morgan("dev"));
@@ -45,6 +61,7 @@ export function createApp() {
   app.use("/equipamentos", equipamentoRoutes);
   app.use("/ordens-servico", ordemServicoRoutes);
   app.use("/historico-os", historicoRouter);
+  app.use("/dashboard", dashboardRoutes);
   app.use(errorMiddleware);
 
   return app;
