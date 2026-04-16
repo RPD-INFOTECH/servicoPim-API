@@ -21,6 +21,10 @@ export class OrdemServicoController {
   }
 
   async getAll(req: Request, res: Response): Promise<Response> {
+    if (!req.auth) {
+      throw new AppError("Usuário não autenticado", 401);
+    }
+
     const filtros = listarOrdensServicoQuerySchemaDTO.parse(req.query);
     const ordensServico = await ordemServicoService.getAll({
       status: filtros.status,
@@ -28,13 +32,21 @@ export class OrdemServicoController {
       tecnicoId: filtros.tecnicoId,
       setor: filtros.setor,
       busca: filtros.busca,
-    });
+    }, req.auth.sub, req.auth.perfil);
     return res.status(200).json(ordensServico);
   }
 
   async getById(req: Request, res: Response): Promise<Response> {
+    if (!req.auth) {
+      throw new AppError("Usuário não autenticado", 401);
+    }
+
     const { id } = req.params;
-    const ordemServico = await ordemServicoService.getById(id as string);
+    const ordemServico = await ordemServicoService.getById(
+      id as string,
+      req.auth.sub,
+      req.auth.perfil
+    );
     return res.status(200).json(ordemServico);
   }
 

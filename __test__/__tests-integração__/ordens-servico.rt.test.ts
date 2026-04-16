@@ -11,9 +11,11 @@ import { Like } from "typeorm";
 import bcrypt from "bcryptjs";
 
 let solicitanteToken: string;
+let outroSolicitanteToken: string;
 let supervisorToken: string;
 let tecnicoToken: string;
 let solicitanteId: string;
+let outroSolicitanteId: string;
 let tecnicoId: string;
 let equipamentoId: number;
 
@@ -73,6 +75,12 @@ describe("Testes de Integração - Rotas de Ordens de Serviço (Banco Real)", ()
             Perfil.SOLICITANTE,
             "OS-USER-001"
         );
+        outroSolicitanteId = await criarUsuario(
+            "Outro Solicitante OS",
+            "outro-solicitante-os-rt@teste.com",
+            Perfil.SOLICITANTE,
+            "OS-USER-004"
+        );
         const supervisorId = await criarUsuario(
             "Supervisor OS",
             "supervisor-os-rt@teste.com",
@@ -87,6 +95,7 @@ describe("Testes de Integração - Rotas de Ordens de Serviço (Banco Real)", ()
         );
 
         solicitanteToken = await login("solicitante-os-rt@teste.com");
+        outroSolicitanteToken = await login("outro-solicitante-os-rt@teste.com");
         supervisorToken = await login("supervisor-os-rt@teste.com");
         tecnicoToken = await login("tecnico-os-rt@teste.com");
 
@@ -194,6 +203,36 @@ describe("Testes de Integração - Rotas de Ordens de Serviço (Banco Real)", ()
         expect(Array.isArray(response.body)).toBe(true);
     });
 
+    test("GET /ordens-servico - Solicitante deve ver apenas as próprias OS", async () => {
+        const createOwnRes = await request(app)
+            .post("/ordens-servico")
+            .set("Authorization", `Bearer ${solicitanteToken}`)
+            .send({
+                equipamentoId,
+                tipo_manutencao: "CORRETIVA",
+                prioridade: "ALTA",
+                descricao_falha: "OS do solicitante autenticado",
+            });
+
+        const createOtherRes = await request(app)
+            .post("/ordens-servico")
+            .set("Authorization", `Bearer ${outroSolicitanteToken}`)
+            .send({
+                equipamentoId,
+                tipo_manutencao: "CORRETIVA",
+                prioridade: "BAIXA",
+                descricao_falha: "OS de outro solicitante",
+            });
+
+        const response = await request(app)
+            .get("/ordens-servico")
+            .set("Authorization", `Bearer ${solicitanteToken}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body.some((os: any) => os.id === createOwnRes.body.id)).toBe(true);
+        expect(response.body.some((os: any) => os.id === createOtherRes.body.id)).toBe(false);
+    });
+
     test("GET /ordens-servico - Deve filtrar por status e prioridade", async () => {
         await request(app)
             .post("/ordens-servico")
@@ -272,6 +311,46 @@ describe("Testes de Integração - Rotas de Ordens de Serviço (Banco Real)", ()
 
         expect(response.status).toBe(400);
         expect(response.body.message).toBe("Ordem de serviço não encontrada");
+    });
+
+    test("GET /ordens-servico/:id - Solicitante não deve acessar OS de outro solicitante", async () => {
+        const createRes = await request(app)
+            .post("/ordens-servico")
+            .set("Authorization", `Bearer ${outroSolicitanteToken}`)
+            .send({
+                equipamentoId,
+                tipo_manutencao: "PREVENTIVA",
+                prioridade: "MÉDIA",
+                descricao_falha: "OS privada de outro solicitante",
+            });
+
+        const response = await request(app)
+            .get(`/ordens-servico/${createRes.body.id}`)
+            .set("Authorization", `Bearer ${solicitanteToken}`);
+
+        expect(response.status).toBe(403);
+        expect(response.body.message).toBe("Acesso negado");
+    });
+
+    test("PATCH /ordens-servico/:id/assumir - Técnico deve conseguir assumir OS aberta disponível", async () => {
+        const createRes = await request(app)
+            .post("/ordens-servico")
+            .set("Authorization", `Bearer ${solicitanteToken}`)
+            .send({
+                equipamentoId,
+                tipo_manutencao: "CORRETIVA",
+                prioridade: "ALTA",
+                descricao_falha: "OS para ser assumida pelo técnico",
+            });
+
+        const response = await request(app)
+            .patch(`/ordens-servico/${createRes.body.id}/assumir`)
+            .set("Authorization", `Bearer ${tecnicoToken}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body.status).toBe("ABERTA");
+        expect(response.body.tecnico).toBeDefined();
+        expect(response.body.tecnico.id).toBe(tecnicoId);
     });
 
     // FLUXO COMPLETO: Criar -> Atribuir Técnico -> Concluir
@@ -547,5 +626,25 @@ describe("Testes de Integração - Rotas de Ordens de Serviço (Banco Real)", ()
 
         expect(response.status).toBe(403);
         expect(response.body.message).toBe("Apenas o supervisor pode cancelar uma OS");
+    });
+
+    test("PATCH /ordens-servico/:id/status - Supervisor pode cancelar OS", async () => {
+        const createRes = await request(app)
+            .post("/ordens-servico")
+            .set("Authorization", `Bearer ${solicitanteToken}`)
+            .send({
+                equipamentoId,
+                tipo_manutencao: "CORRETIVA",
+                prioridade: "ALTA",
+                descricao_falha: "Teste de cancelamento por supervisor",
+            });
+
+        const response = await request(app)
+            .patch(`/ordens-servico/${createRes.body.id}/status`)
+            .set("Authorization", `Bearer ${supervisorToken}`)
+            .send({ status: "CANCELADA" });
+
+        expect(response.status).toBe(200);
+        expect(response.body.status).toBe("CANCELADA");
     });
 });
