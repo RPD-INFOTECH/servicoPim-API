@@ -87,7 +87,9 @@ export class OrdemServicoService {
       tecnicoId: undefined,
       setor: undefined,
       busca: undefined,
-    }
+    },
+    usuarioId?: string,
+    usuarioPerfil?: Perfil
   ): Promise<OrdemServico[]> {
     const busca = filters.busca?.trim();
 
@@ -97,6 +99,10 @@ export class OrdemServicoService {
       .leftJoinAndSelect("ordemServico.solicitante", "solicitante")
       .leftJoinAndSelect("ordemServico.tecnico", "tecnico")
       .leftJoinAndSelect("ordemServico.apontamentos", "apontamentos");
+
+    if (usuarioPerfil === Perfil.SOLICITANTE && usuarioId) {
+      query.andWhere("solicitante.id = :usuarioId", { usuarioId });
+    }
 
     if (busca) {
       query.andWhere(
@@ -139,7 +145,11 @@ export class OrdemServicoService {
     return ordens.map((ordem) => this.attachMetricas(ordem));
   }
 
-  async getById(id: string): Promise<OrdemServico> {
+  async getById(
+    id: string,
+    usuarioId?: string,
+    usuarioPerfil?: Perfil
+  ): Promise<OrdemServico> {
     const ordemServico = await this.ordemServicoRepo.findOne({
       where: { id },
       relations: ["equipamento", "solicitante", "tecnico", "apontamentos", "apontamentos.tecnico"],
@@ -147,6 +157,14 @@ export class OrdemServicoService {
 
     if (!ordemServico) {
       throw new AppError("Ordem de serviço não encontrada");
+    }
+
+    if (
+      usuarioPerfil === Perfil.SOLICITANTE &&
+      usuarioId &&
+      ordemServico.solicitante.id !== usuarioId
+    ) {
+      throw new AppError("Acesso negado", 403);
     }
 
     return this.attachMetricas(ordemServico);
