@@ -200,6 +200,35 @@ describe("Testes de Integração - Rotas de Ordens de Serviço (Banco Real)", ()
         expect(response.body.message).toBe("Dados inválidos");
     });
 
+    test("POST /ordens-servico - Deve criar OS mesmo com sequence do número atrasada", async () => {
+        const primeira = await request(app)
+            .post("/ordens-servico")
+            .set("Authorization", `Bearer ${solicitanteToken}`)
+            .send({
+                equipamentoId,
+                tipo_manutencao: "PREVENTIVA",
+                prioridade: "MÉDIA",
+                descricao_falha: "Validação de sequência sincronizada",
+            });
+
+        expect(primeira.status).toBe(201);
+
+        await appDataSource.query(`SELECT setval('ordem_servico_numero_seq', 1, true)`);
+
+        const segunda = await request(app)
+            .post("/ordens-servico")
+            .set("Authorization", `Bearer ${solicitanteToken}`)
+            .send({
+                equipamentoId,
+                tipo_manutencao: "CORRETIVA",
+                prioridade: "ALTA",
+                descricao_falha: "Validação após atraso manual da sequência",
+            });
+
+        expect(segunda.status).toBe(201);
+        expect(segunda.body.numero).not.toBe(primeira.body.numero);
+    });
+
     // READ
     test("GET /ordens-servico - Deve listar todas as OS", async () => {
         const response = await request(app)
