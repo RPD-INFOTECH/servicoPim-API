@@ -283,7 +283,12 @@ describe("OrdemServicoService", () => {
       descricao_falha: "Parou de responder",
     });
 
-    expect(mockManager.query).toHaveBeenCalledWith(
+    expect(mockManager.query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("SELECT setval(")
+    );
+    expect(mockManager.query).toHaveBeenNthCalledWith(
+      2,
       `SELECT nextval('ordem_servico_numero_seq')::bigint AS value`
     );
     expect(result.numero).toBe("OS-0001");

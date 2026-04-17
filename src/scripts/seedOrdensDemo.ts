@@ -95,6 +95,25 @@ async function getStartingSequence(ordemRepo: ReturnType<typeof appDataSource.ge
   return match ? Number(match[1]) + 1 : 1;
 }
 
+async function syncNumeroSequence() {
+  await appDataSource.query(`
+    SELECT setval(
+      'ordem_servico_numero_seq',
+      GREATEST(
+        COALESCE((SELECT last_value FROM ordem_servico_numero_seq), 0),
+        COALESCE(
+          (
+            SELECT MAX(CAST(SUBSTRING(numero FROM 'OS-(\\d+)$') AS bigint))
+            FROM ordem_servico
+            WHERE numero ~ '^OS-[0-9]+$'
+          ),
+          0
+        )
+      )
+    )
+  `);
+}
+
 async function main() {
   const requested = Number(process.argv[2] ?? DEFAULT_COUNT);
   const count = Number.isFinite(requested) && requested > 0 ? Math.floor(requested) : DEFAULT_COUNT;
@@ -297,6 +316,8 @@ async function main() {
 
       sequence += 1;
     }
+
+    await syncNumeroSequence();
 
     console.log(`Geração concluída com sucesso.`);
     console.log(`Ordens de serviço criadas: ${count}`);

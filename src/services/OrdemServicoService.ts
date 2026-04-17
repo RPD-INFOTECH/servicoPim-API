@@ -628,6 +628,23 @@ export class OrdemServicoService {
   }
 
   private async gerarNumeroOS(manager: EntityManager): Promise<string> {
+    await manager.query(`
+      SELECT setval(
+        'ordem_servico_numero_seq',
+        GREATEST(
+          COALESCE((SELECT last_value FROM ordem_servico_numero_seq), 0),
+          COALESCE(
+            (
+              SELECT MAX(CAST(SUBSTRING(numero FROM 'OS-(\\d+)$') AS bigint))
+              FROM ordem_servico
+              WHERE numero ~ '^OS-[0-9]+$'
+            ),
+            0
+          )
+        )
+      )
+    `);
+
     const [result] = await manager.query(
       `SELECT nextval('ordem_servico_numero_seq')::bigint AS value`
     );
