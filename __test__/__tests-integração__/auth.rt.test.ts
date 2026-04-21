@@ -30,7 +30,7 @@ describe("Testes de Integração - Rotas de Autenticação (Banco Real)", () => 
         }
     });
 
-    test("POST /auth/login - Deve retornar accessToken e refreshToken REAIS do banco", async () => {
+    test("POST /auth/login - Deve retornar accessToken e setar cookie httpOnly com refreshToken", async () => {
         const email = "login-sucesso@teste.com";
         const repo = appDataSource.getRepository(Usuario);
 
@@ -49,14 +49,19 @@ describe("Testes de Integração - Rotas de Autenticação (Banco Real)", () => 
 
         const response = await request(app)
             .post("/auth/login")
-            .send({
-                email,
-                senha: "senha123"
-            });
+            .send({ email, senha: "senha123" });
 
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty("accessToken");
-        expect(response.body).toHaveProperty("refreshToken");
+        expect(response.body).not.toHaveProperty("refreshToken");
+
+        const setCookieHeader = response.headers["set-cookie"] as string[] | string | undefined;
+        expect(setCookieHeader).toBeDefined();
+
+        const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader!];
+        const refreshCookie = cookies.find((c) => c.startsWith("refreshToken="));
+        expect(refreshCookie).toBeDefined();
+        expect(refreshCookie).toMatch(/HttpOnly/i);
 
         await repo.delete({ email });
     });
@@ -79,10 +84,7 @@ describe("Testes de Integração - Rotas de Autenticação (Banco Real)", () => 
 
         const response = await request(app)
             .post("/auth/login")
-            .send({
-                email,
-                senha: "senha_errada"
-            });
+            .send({ email, senha: "senha_errada" });
 
         expect(response.status).toBe(400);
         expect(response.body.message).toBe("Email ou senha inválidos");
@@ -90,7 +92,7 @@ describe("Testes de Integração - Rotas de Autenticação (Banco Real)", () => 
         await repo.delete({ email });
     });
 
-    test("POST /auth/refresh - Deve retornar novos tokens se o refreshToken for válido", async () => {
+    test("POST /auth/refresh - Deve retornar novo accessToken se o cookie refreshToken for válido", async () => {
         const email = "refresh-sucesso@teste.com";
         const repo = appDataSource.getRepository(Usuario);
         await repo.delete({ email });
@@ -110,25 +112,42 @@ describe("Testes de Integração - Rotas de Autenticação (Banco Real)", () => 
             .post("/auth/login")
             .send({ email, senha: "senha123" });
 
-        const { refreshToken } = loginResponse.body;
+        const setCookieHeader = loginResponse.headers["set-cookie"] as string[] | string;
+        const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
 
         const response = await request(app)
             .post("/auth/refresh")
-            .send({ refreshToken });
+            .set("Cookie", cookies);
 
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty("accessToken");
-        expect(response.body).toHaveProperty("refreshToken");
+        expect(response.body).not.toHaveProperty("refreshToken");
+
+        const newSetCookie = response.headers["set-cookie"] as string[] | string | undefined;
+        expect(newSetCookie).toBeDefined();
 
         await repo.delete({ email });
     });
 
-    test("POST /auth/refresh - Deve falhar com refreshToken inválido", async () => {
+    test("POST /auth/refresh - Deve falhar sem cookie de refreshToken", async () => {
         const response = await request(app)
-            .post("/auth/refresh")
-            .send({ refreshToken: "token_invalido_qualquer" });
+            .post("/auth/refresh");
 
-        expect(response.status).toBe(400);
-        expect(response.body.message).toBe("Refresh Token inválido ou expirado");
+        expect(response.status).toBe(401);
+        expect(response.body.message).toBe("Refresh Token ausente");
+    });
+
+    test("POST /auth/logout - Deve limpar o cookie de refreshToken", async () => {
+        const response = await request(app)
+            .post("/auth/logout");
+
+        expect(response.status).toBe(204);
+
+        const setCookieHeader = response.headers["set-cookie"] as string[] | string | undefined;
+        expect(setCookieHeader).toBeDefined();
+
+        const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader!];
+        const refreshCookie = cookies.find((c) => c.startsWith("refreshToken="));
+        expect(refreshCookie).toMatch(/expires=Thu, 01 Jan 1970/i);
     });
 });
