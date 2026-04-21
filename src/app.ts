@@ -3,6 +3,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
 import { authRoutes } from "./routes/auth.routes.js";
 import { usuarioRoutes } from "./routes/usuario.routes.js";
 import { equipamentoRoutes } from "./routes/equipamento.routes.js";
@@ -52,6 +53,7 @@ export function createApp() {
 
   app.use(compression({ threshold: 1024 }));
   app.use(express.json());
+  app.use(cookieParser());
 
   app.use((req, res, next) => {
     if (req.path === "/health") {
