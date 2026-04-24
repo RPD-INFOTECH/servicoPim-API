@@ -82,6 +82,7 @@ jobs:
           git config user.email "github-actions@github.com"
           git add docker-compose.yml
           git diff --staged --quiet || git commit -m "ci: atualiza imagem API para ${SHA}"
+          git pull --rebase
           git push
 
       - name: Redeploy stack no Portainer
