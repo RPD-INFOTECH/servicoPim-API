@@ -58,6 +58,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
+            type=raw,value=1.0.0
             type=raw,value=latest
 
       - name: Build and push
@@ -68,3 +69,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Redeploy stack no Portainer
+        run: curl -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
