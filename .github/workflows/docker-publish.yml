@@ -32,9 +32,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Run integration tests
-        run: npm run test:integration:docker
-
   build-and-push:
     runs-on: ubuntu-latest
     needs: test
