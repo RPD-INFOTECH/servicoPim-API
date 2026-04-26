@@ -37,8 +37,7 @@
   },
   "overrides": {
     "brace-expansion": "^2.0.3",
-    "path-to-regexp": "^8.4.2",
-    "uuid": "^14.0.0"
+    "path-to-regexp": "^8.4.2"
   },
   "devDependencies": {
     "@babel/preset-typescript": "^7.28.5",
