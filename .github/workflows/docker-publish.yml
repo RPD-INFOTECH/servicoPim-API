@@ -66,8 +66,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha
+            type=raw,value=latest
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -79,3 +78,10 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Redeploy stack no Portainer com pull da imagem
+        run: |
+          curl -s -X POST "http://45.84.243.199:9000/api/stacks/125/git/redeploy" \
+            -H "X-API-Key: ${{ secrets.PORTAINER_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"pullImage": true, "repositoryAuthentication": false}'
