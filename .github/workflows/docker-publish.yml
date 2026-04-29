@@ -46,6 +46,10 @@ jobs:
       contents: read
       packages: write
 
+    env:
+      PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
+      PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -79,3 +83,24 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Redeploy stack no Portainer
+        if: env.PORTAINER_WEBHOOK_URL != '' || env.PORTAINER_TOKEN != ''
+        run: |
+          if [ -n "${PORTAINER_WEBHOOK_URL}" ]; then
+            echo "Tentando redeploy via webhook do Portainer..."
+            if curl -fsS -X POST "${PORTAINER_WEBHOOK_URL}"; then
+              exit 0
+            fi
+            echo "Webhook falhou; tentando fallback via API token."
+          fi
+
+          if [ -z "${PORTAINER_TOKEN}" ]; then
+            echo "PORTAINER_TOKEN não configurado; não foi possível executar fallback."
+            exit 1
+          fi
+
+          curl -fsS -X POST "http://45.84.243.199:9000/api/stacks/125/git/redeploy" \
+            -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"pullImage": true, "repositoryAuthentication": false}'
