@@ -49,6 +49,10 @@ jobs:
     env:
       PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
       PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+      PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
+      PORTAINER_STACK_ID: ${{ secrets.PORTAINER_STACK_ID }}
+      PORTAINER_STACK_NAME: ${{ secrets.PORTAINER_STACK_NAME }}
+      PORTAINER_ENDPOINT_ID: ${{ secrets.PORTAINER_ENDPOINT_ID }}
 
     steps:
       - name: Checkout
@@ -100,7 +104,26 @@ jobs:
             exit 1
           fi
 
-          curl -fsS -X POST "http://45.84.243.199:9000/api/stacks/125/git/redeploy" \
+          PORTAINER_BASE_URL="${PORTAINER_URL:-http://45.84.243.199:9000}"
+          STACK_ID="${PORTAINER_STACK_ID:-}"
+          STACK_NAME="${PORTAINER_STACK_NAME:-gestao-os}"
+          ENDPOINT_ID="${PORTAINER_ENDPOINT_ID:-}"
+
+          if [ -z "${STACK_ID}" ] || [ -z "${ENDPOINT_ID}" ]; then
+            echo "Buscando stack '${STACK_NAME}' na API do Portainer..."
+            STACKS_JSON="$(curl -fsS "${PORTAINER_BASE_URL}/api/stacks" -H "X-API-Key: ${PORTAINER_TOKEN}")"
+            STACK_ID="$(STACKS_JSON="${STACKS_JSON}" STACK_NAME="${STACK_NAME}" node -e "const stacks = JSON.parse(process.env.STACKS_JSON || '[]'); const stack = stacks.find((item) => item.Name === process.env.STACK_NAME); if (stack) process.stdout.write(String(stack.Id));")"
+            ENDPOINT_ID="$(STACKS_JSON="${STACKS_JSON}" STACK_NAME="${STACK_NAME}" node -e "const stacks = JSON.parse(process.env.STACKS_JSON || '[]'); const stack = stacks.find((item) => item.Name === process.env.STACK_NAME); if (stack) process.stdout.write(String(stack.EndpointId || stack.EndpointID || ''));")"
+
+            if [ -z "${STACK_ID}" ] || [ -z "${ENDPOINT_ID}" ]; then
+              echo "Stack '${STACK_NAME}' não encontrada no Portainer."
+              echo "Configure PORTAINER_STACK_NAME com o nome exato da stack ou PORTAINER_STACK_ID e PORTAINER_ENDPOINT_ID."
+              exit 1
+            fi
+          fi
+
+          echo "Tentando redeploy via API do Portainer no stack ${STACK_ID}, endpoint ${ENDPOINT_ID}..."
+          curl -fsS -X PUT "${PORTAINER_BASE_URL}/api/stacks/${STACK_ID}/git/redeploy?endpointId=${ENDPOINT_ID}" \
             -H "X-API-Key: ${PORTAINER_TOKEN}" \
             -H "Content-Type: application/json" \
             -d '{"pullImage": true, "repositoryAuthentication": false}'
